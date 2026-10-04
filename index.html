@@ -2,66 +2,146 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Election Route Planning Map Tool</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0">
+    <title>Election Route Planning Tool</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        body {
+        html, body {
+            height: 100%;
+            width: 100%;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: #f5f5f5;
+            overflow: hidden;
         }
 
         .container {
             display: flex;
             height: 100vh;
+            width: 100%;
         }
 
-        .sidebar {
-            width: 350px;
-            background: white;
-            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-            overflow-y: auto;
-            padding: 20px;
+        @media (min-width: 1024px) {
+            .container {
+                flex-direction: row;
+            }
+
+            .sidebar {
+                width: 380px;
+                background: white;
+                box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+                overflow-y: auto;
+                padding: 15px;
+            }
+
+            .main-content {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+            }
+
+            #map {
+                flex: 1;
+            }
+
+            .tabs {
+                display: none;
+            }
+
+            .toggle-sidebar {
+                display: none;
+            }
         }
 
-        .main-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
+        @media (max-width: 1023px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                background: white;
+                max-height: 0;
+                overflow: hidden;
+                padding: 0;
+                transition: max-height 0.3s ease;
+                z-index: 100;
+            }
+
+            .sidebar.active {
+                max-height: 70vh;
+                padding: 15px;
+                overflow-y: auto;
+                box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            }
+
+            .main-content {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+            }
+
+            #map {
+                flex: 1;
+            }
+
+            .tabs {
+                display: flex;
+                background: white;
+                border-top: 1px solid #ddd;
+                box-shadow: 0 -1px 5px rgba(0,0,0,0.1);
+            }
+
+            .tabs button {
+                flex: 1;
+                background: #f5f5f5;
+                border: none;
+                padding: 12px 5px;
+                font-size: 12px;
+                color: #666;
+                cursor: pointer;
+                border-bottom: 3px solid transparent;
+                margin: 0;
+            }
+
+            .tabs button.active {
+                background: white;
+                color: #2c3e50;
+                border-bottom-color: #3498db;
+            }
+
+            .toggle-sidebar {
+                display: block;
+            }
         }
 
         .header {
-            background: #2c3e50;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
             color: white;
-            padding: 15px 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 12px 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
         }
 
         .header h1 {
-            font-size: 24px;
-            margin-bottom: 5px;
+            font-size: 22px;
+            margin-bottom: 3px;
         }
 
         .header p {
             font-size: 12px;
-            opacity: 0.9;
-        }
-
-        #map {
-            flex: 1;
-            position: relative;
+            opacity: 0.85;
         }
 
         .section {
-            margin-bottom: 20px;
+            margin-bottom: 18px;
             padding-bottom: 15px;
-            border-bottom: 1px solid #ddd;
+            border-bottom: 1px solid #ecf0f1;
         }
 
         .section:last-child {
@@ -70,16 +150,15 @@
 
         .section h3 {
             color: #2c3e50;
-            font-size: 16px;
+            font-size: 15px;
             margin-bottom: 10px;
-            display: flex;
-            align-items: center;
+            font-weight: 600;
         }
 
         label {
             display: block;
-            margin-bottom: 8px;
-            font-size: 13px;
+            margin-bottom: 6px;
+            font-size: 12px;
             color: #333;
             font-weight: 500;
         }
@@ -91,35 +170,46 @@
         textarea {
             width: 100%;
             padding: 10px;
-            margin-bottom: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 13px;
+            margin-bottom: 8px;
+            border: 1px solid #bdc3c7;
+            border-radius: 6px;
+            font-size: 14px;
             font-family: inherit;
+            -webkit-appearance: none;
+            appearance: none;
+            background-color: white;
         }
 
         input[type="text"]:focus,
         input[type="number"]:focus,
-        input[type="file"]:focus,
         select:focus,
         textarea:focus {
             outline: none;
             border-color: #3498db;
-            box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+            box-shadow: 0 0 6px rgba(52, 152, 219, 0.3);
+        }
+
+        select {
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+            background-size: 20px;
+            padding-right: 30px;
         }
 
         button {
             background: #3498db;
             color: white;
-            padding: 10px 15px;
+            padding: 10px 14px;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
             font-size: 13px;
             font-weight: 500;
             margin-right: 5px;
             margin-bottom: 8px;
-            transition: background 0.3s;
+            transition: all 0.3s;
+            display: inline-block;
         }
 
         button:hover {
@@ -150,15 +240,28 @@
             background: #229954;
         }
 
+        .button-group {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+
+        .button-group button {
+            flex: 1;
+            min-width: 80px;
+            margin: 0;
+        }
+
         .route-item {
-            background: #f9f9f9;
+            background: #f8f9fa;
             padding: 10px;
             margin-bottom: 8px;
             border-left: 4px solid #3498db;
-            border-radius: 3px;
+            border-radius: 4px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            font-size: 12px;
         }
 
         .route-item.route-1 { border-left-color: #e74c3c; }
@@ -168,21 +271,20 @@
         .route-item.route-5 { border-left-color: #1abc9c; }
 
         .route-item span {
-            font-size: 12px;
             font-weight: 500;
         }
 
         .route-item button {
-            padding: 5px 8px;
+            padding: 4px 8px;
             margin: 0;
             font-size: 11px;
         }
 
         .polling-station-item {
-            background: #f0f0f0;
+            background: #ecf0f1;
             padding: 8px;
             margin-bottom: 6px;
-            border-radius: 3px;
+            border-radius: 4px;
             font-size: 12px;
             display: flex;
             justify-content: space-between;
@@ -191,6 +293,12 @@
 
         .polling-station-item.assigned {
             background: #d5f4e6;
+        }
+
+        .polling-station-item button {
+            padding: 3px 6px;
+            margin: 0;
+            font-size: 10px;
         }
 
         .stats {
@@ -205,10 +313,6 @@
             margin: 4px 0;
         }
 
-        .stats strong {
-            color: #2c3e50;
-        }
-
         .success-message {
             background: #d4edda;
             border: 1px solid #28a745;
@@ -217,6 +321,7 @@
             border-radius: 4px;
             margin-bottom: 10px;
             font-size: 12px;
+            animation: slideIn 0.3s ease;
         }
 
         .error-message {
@@ -227,35 +332,122 @@
             border-radius: 4px;
             margin-bottom: 10px;
             font-size: 12px;
+            animation: slideIn 0.3s ease;
         }
 
-        .info-box {
-            background: #fff3cd;
-            border: 1px solid #ffc107;
-            padding: 10px;
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .list-container {
+            max-height: 180px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 5px;
+        }
+
+        .list-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .list-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .list-container::-webkit-scrollbar-thumb {
+            background: #bdc3c7;
+            border-radius: 3px;
+        }
+
+        .toggle-sidebar {
+            position: absolute;
+            top: 70px;
+            right: 10px;
+            z-index: 101;
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 12px;
             border-radius: 4px;
             font-size: 12px;
+            cursor: pointer;
+            margin: 0;
+        }
+
+        #messages {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            z-index: 1000;
+            max-width: 400px;
+        }
+
+        .transparency-container {
             margin-bottom: 10px;
         }
 
-        @media (max-width: 768px) {
-            .container {
-                flex-direction: column;
-            }
-            .sidebar {
-                width: 100%;
-                max-height: 40vh;
-            }
-            #map {
-                height: 60vh;
-            }
+        .transparency-container label {
+            margin-bottom: 3px;
+        }
+
+        .transparency-slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+            margin-bottom: 8px;
+        }
+
+        .transparency-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3498db;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(0,0,0,0.2);
+        }
+
+        .transparency-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3498db;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 5px rgba(0,0,0,0.2);
+        }
+
+        .map-preview {
+            margin-top: 10px;
+            padding: 8px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
         }
     </style>
 </head>
 <body>
+    <button class="toggle-sidebar" onclick="toggleSidebar()" id="toggleBtn" style="display:none;">☰ Menu</button>
+
     <div class="container">
         <!-- Sidebar -->
-        <div class="sidebar">
+        <div class="sidebar" id="sidebar">
             <div id="messages"></div>
 
             <!-- Map Setup Section -->
@@ -264,37 +456,56 @@
                 <label>Mandal/Zone Name:</label>
                 <input type="text" id="mandalName" placeholder="Enter mandal name" value="Lepakshi">
                 
-                <label>Initial Latitude:</label>
+                <label>Latitude:</label>
                 <input type="number" id="initLat" placeholder="13.3521" value="13.3521" step="0.0001">
                 
-                <label>Initial Longitude:</label>
+                <label>Longitude:</label>
                 <input type="number" id="initLng" placeholder="79.3203" value="79.3203" step="0.0001">
                 
-                <button onclick="updateMapCenter()" class="success">Update Center</button>
+                <button onclick="updateMapCenter()" class="success" style="width: 100%; margin-bottom: 10px;">Update Center</button>
+
+                <!-- Boundary Map Upload -->
+                <label style="margin-top: 12px; font-weight: 600; color: #16a085;">🗺️ Upload Boundary Map</label>
+                <input type="file" id="boundaryMapFile" accept="image/*" style="margin-bottom: 8px;">
+                <button onclick="uploadBoundaryMap()" class="success" style="width: 100%; margin-bottom: 10px;">Upload Map Image</button>
+
+                <!-- Transparency Control -->
+                <div class="transparency-container" id="transparencyContainer" style="display: none;">
+                    <label>Map Transparency:</label>
+                    <input type="range" id="mapTransparency" min="0" max="100" value="100" class="transparency-slider" onchange="updateMapTransparency()">
+                    <small style="color: #666; font-size: 11px;">0% = See map, 100% = See boundary</small>
+                </div>
+
+                <!-- Remove Map Button -->
+                <button onclick="removeBoundaryMap()" class="danger" id="removeMapBtn" style="width: 100%; display: none; margin-bottom: 10px;">Remove Boundary Map</button>
+
+                <div class="map-preview" id="mapPreview"></div>
             </div>
 
             <!-- Route Configuration -->
             <div class="section">
-                <h3>🛣️ Route Configuration</h3>
+                <h3>🛣️ Routes</h3>
                 <label>Number of Routes:</label>
                 <input type="number" id="numRoutes" min="1" max="10" value="3">
                 
                 <label>Route Name Pattern:</label>
                 <input type="text" id="routeNamePattern" placeholder="e.g., Route-" value="Route-">
                 
-                <button onclick="createRoutes()" class="success" style="width: 48%; display: inline-block;">Create Routes</button>
-                <button onclick="clearRoutes()" class="danger" style="width: 48%; display: inline-block; margin-left: 4%;">Clear Routes</button>
+                <div class="button-group">
+                    <button onclick="createRoutes()" class="success">Create</button>
+                    <button onclick="clearRoutes()" class="danger">Clear</button>
+                </div>
 
-                <div id="routesList" style="margin-top: 10px;"></div>
+                <div id="routesList"></div>
             </div>
 
             <!-- Polling Station Management -->
             <div class="section">
-                <h3>🏛️ Add Polling Station</h3>
+                <h3>🏛️ Polling Stations</h3>
                 <label>PS Name:</label>
-                <input type="text" id="psName" placeholder="e.g., School A">
+                <input type="text" id="psName" placeholder="School A">
                 
-                <label>Village Name:</label>
+                <label>Village:</label>
                 <input type="text" id="psVillage" placeholder="Village Name">
                 
                 <label>Latitude:</label>
@@ -305,32 +516,34 @@
                 
                 <button onclick="addPollingStation()" class="success" style="width: 100%;">Add Polling Station</button>
 
-                <label style="margin-top: 15px; margin-bottom: 8px;"><strong>Polling Stations:</strong></label>
-                <div id="pollingStationsList" style="max-height: 150px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 5px;"></div>
+                <label style="margin-top: 12px; margin-bottom: 6px;"><strong>List:</strong></label>
+                <div id="pollingStationsList" class="list-container"></div>
             </div>
 
             <!-- Assign to Routes -->
             <div class="section">
-                <h3>📌 Assign to Routes</h3>
-                <label>Select Polling Station:</label>
+                <h3>📌 Assign to Route</h3>
+                <label>Polling Station:</label>
                 <select id="psSelect"></select>
                 
-                <label>Select Route:</label>
+                <label>Route:</label>
                 <select id="routeSelect"></select>
                 
-                <button onclick="assignPSToRoute()" class="success" style="width: 48%; display: inline-block;">Assign</button>
-                <button onclick="unassignPS()" class="danger" style="width: 48%; display: inline-block; margin-left: 4%;">Unassign</button>
+                <div class="button-group">
+                    <button onclick="assignPSToRoute()" class="success">Assign</button>
+                    <button onclick="unassignPS()" class="danger">Unassign</button>
+                </div>
 
-                <div id="assignmentStats" style="margin-top: 10px;"></div>
+                <div id="assignmentStats"></div>
             </div>
 
             <!-- Export Options -->
             <div class="section">
-                <h3>📥 Export & Download</h3>
-                <button onclick="downloadMapImage()" class="success" style="width: 100%; margin-bottom: 8px;">📷 Download Map (PNG)</button>
-                <button onclick="downloadRouteData()" class="secondary" style="width: 100%; margin-bottom: 8px;">📄 Download Route Data</button>
-                <button onclick="exportAsJSON()" class="secondary" style="width: 100%; margin-bottom: 8px;">💾 Export as JSON</button>
-                <button onclick="printMap()" class="secondary" style="width: 100%;">🖨️ Print Map</button>
+                <h3>📥 Export</h3>
+                <button onclick="downloadMapImage()" class="success" style="width: 100%; margin-bottom: 6px;">📷 Map (PNG)</button>
+                <button onclick="downloadRouteData()" class="secondary" style="width: 100%; margin-bottom: 6px;">📄 Routes (TXT)</button>
+                <button onclick="exportAsJSON()" class="secondary" style="width: 100%; margin-bottom: 6px;">💾 JSON</button>
+                <button onclick="printMap()" class="secondary" style="width: 100%;">🖨️ Print</button>
             </div>
         </div>
 
@@ -338,9 +551,15 @@
         <div class="main-content">
             <div class="header">
                 <h1>🗺️ Election Route Planning Tool</h1>
-                <p>MPTC & ZPTC 2014 | Plan and organize polling station routes efficiently</p>
+                <p>MPTC & ZPTC 2014 | Organize polling routes efficiently</p>
             </div>
             <div id="map"></div>
+
+            <!-- Mobile Tabs -->
+            <div class="tabs">
+                <button class="tab-button active" onclick="switchTab('map')" data-tab="map">🗺️ Map</button>
+                <button class="tab-button" onclick="switchTab('sidebar')" data-tab="sidebar">⚙️ Setup</button>
+            </div>
         </div>
     </div>
 
@@ -349,243 +568,84 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <script>
-        // Global Variables
         let map;
         let routes = [];
         let pollingStations = [];
         let markers = {};
+        let boundaryMapLayer = null;
         let routeColors = ['#e74c3c', '#27ae60', '#f39c12', '#9b59b6', '#1abc9c', '#16a085', '#2980b9', '#8e44ad', '#c0392b', '#d35400'];
 
-        // Initialize Map
         function initMap() {
             const lat = parseFloat(document.getElementById('initLat').value) || 13.3521;
             const lng = parseFloat(document.getElementById('initLng').value) || 79.3203;
             
-            map = L.map('map').setView([lat, lng], 12);
+            map = L.map('map', {
+                touchZoom: true,
+                tap: true,
+                zoomControl: true,
+                dragging: true
+            }).setView([lat, lng], 12);
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors',
+                attribution: '© OpenStreetMap',
                 maxZoom: 19
             }).addTo(map);
 
-            // Add scale
             L.control.scale().addTo(map);
+
+            // Responsive adjustments
+            if (window.innerWidth <= 1023) {
+                document.querySelector('.toggle-sidebar').style.display = 'block';
+            }
+
+            showMessage('Welcome to Route Planning Tool!');
         }
 
-        // Update Map Center
-        function updateMapCenter() {
-            const lat = parseFloat(document.getElementById('initLat').value);
-            const lng = parseFloat(document.getElementById('initLng').value);
-            
-            if (!isNaN(lat) && !isNaN(lng)) {
-                map.setView([lat, lng], 12);
-                showMessage('Map center updated!');
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('active');
+            const toggleBtn = document.getElementById('toggleBtn');
+            toggleBtn.textContent = sidebar.classList.contains('active') ? '✕ Close' : '☰ Menu';
+        }
+
+        function switchTab(tab) {
+            if (tab === 'sidebar') {
+                document.getElementById('sidebar').classList.add('active');
             } else {
-                showMessage('Please enter valid coordinates', 'error');
+                document.getElementById('sidebar').classList.remove('active');
             }
+            
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
         }
 
-        // Show Messages
-        function showMessage(message, type = 'success') {
-            const messagesDiv = document.getElementById('messages');
-            const messageEl = document.createElement('div');
-            messageEl.className = type === 'success' ? 'success-message' : 'error-message';
-            messageEl.textContent = message;
-            messagesDiv.appendChild(messageEl);
-
-            setTimeout(() => {
-                messageEl.remove();
-            }, 3000);
-        }
-
-        // Create Routes
-        function createRoutes() {
-            const numRoutes = parseInt(document.getElementById('numRoutes').value);
-            const namePattern = document.getElementById('routeNamePattern').value;
-
-            if (numRoutes < 1 || numRoutes > 10) {
-                showMessage('Routes must be between 1 and 10', 'error');
+        function uploadBoundaryMap() {
+            const file = document.getElementById('boundaryMapFile').files[0];
+            if (!file) {
+                showMessage('Please select a file', 'error');
                 return;
             }
 
-            routes = [];
-            for (let i = 1; i <= numRoutes; i++) {
-                routes.push({
-                    id: i,
-                    name: namePattern + i,
-                    color: routeColors[i - 1] || '#95a5a6',
-                    pollingStations: []
-                });
-            }
-
-            updateRoutesList();
-            updateRouteSelects();
-            showMessage(`${numRoutes} routes created successfully!`);
-        }
-
-        // Clear Routes
-        function clearRoutes() {
-            if (confirm('Are you sure? This will clear all routes and station assignments.')) {
-                routes = [];
-                pollingStations.forEach(ps => ps.route = null);
-                updateRoutesList();
-                updatePollingStationsList();
-                updateRouteSelects();
-                updateAssignmentStats();
-                pollingStations.forEach(ps => {
-                    if (markers[ps.id]) {
-                        markers[ps.id].setStyle({ fillColor: '#3498db' });
-                    }
-                });
-                showMessage('All routes cleared');
-            }
-        }
-
-        // Update Routes List Display
-        function updateRoutesList() {
-            const list = document.getElementById('routesList');
-            list.innerHTML = '';
-
-            if (routes.length === 0) {
-                list.innerHTML = '<p style="color: #999; font-size: 12px;">No routes created yet</p>';
+            if (file.size > 5 * 1024 * 1024) {
+                showMessage('File size too large (max 5MB)', 'error');
                 return;
             }
 
-            routes.forEach(route => {
-                const item = document.createElement('div');
-                item.className = `route-item route-${route.id}`;
-                item.style.borderLeftColor = route.color;
-                item.innerHTML = `
-                    <span>${route.name} (${route.pollingStations.length} PS)</span>
-                    <button class="danger" onclick="deleteRoute(${route.id})" style="padding: 3px 6px; font-size: 11px;">×</button>
-                `;
-                list.appendChild(item);
-            });
-        }
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const bounds = [[13.3, 79.2], [13.4, 79.4]];
+                
+                if (boundaryMapLayer) {
+                    map.removeLayer(boundaryMapLayer);
+                }
 
-        // Delete Route
-        function deleteRoute(routeId) {
-            if (confirm('Delete this route?')) {
-                routes = routes.filter(r => r.id !== routeId);
-                pollingStations.forEach(ps => {
-                    if (ps.route === routeId) {
-                        ps.route = null;
-                        if (markers[ps.id]) markers[ps.id].setStyle({ fillColor: '#3498db' });
-                    }
-                });
-                updateRoutesList();
-                updateRouteSelects();
-                updateAssignmentStats();
-                showMessage('Route deleted');
-            }
-        }
+                boundaryMapLayer = L.imageOverlay(e.target.result, bounds, {
+                    opacity: 1,
+                    interactive: false
+                }).addTo(map);
 
-        // Add Polling Station
-        function addPollingStation() {
-            const name = document.getElementById('psName').value.trim();
-            const village = document.getElementById('psVillage').value.trim();
-            const lat = parseFloat(document.getElementById('psLat').value);
-            const lng = parseFloat(document.getElementById('psLng').value);
+                map.fitBounds(bounds);
 
-            if (!name || !village || isNaN(lat) || isNaN(lng)) {
-                showMessage('Please fill all fields correctly', 'error');
-                return;
-            }
-
-            const ps = {
-                id: Date.now(),
-                name,
-                village,
-                lat,
-                lng,
-                route: null
-            };
-
-            pollingStations.push(ps);
-
-            // Add marker on map
-            const marker = L.circleMarker([lat, lng], {
-                radius: 8,
-                fillColor: '#3498db',
-                color: '#2c3e50',
-                weight: 2,
-                opacity: 0.8,
-                fillOpacity: 0.7
-            }).addTo(map).bindPopup(`<strong>${name}</strong><br>${village}`);
-
-            markers[ps.id] = marker;
-
-            // Clear inputs
-            document.getElementById('psName').value = '';
-            document.getElementById('psVillage').value = '';
-            document.getElementById('psLat').value = '';
-            document.getElementById('psLng').value = '';
-
-            updatePollingStationsList();
-            updatePSSelects();
-            updateAssignmentStats();
-            showMessage(`Polling station '${name}' added`);
-        }
-
-        // Update Polling Stations List
-        function updatePollingStationsList() {
-            const list = document.getElementById('pollingStationsList');
-            list.innerHTML = '';
-
-            if (pollingStations.length === 0) {
-                list.innerHTML = '<p style="color: #999; font-size: 12px; padding: 5px;">No polling stations added</p>';
-                return;
-            }
-
-            pollingStations.forEach(ps => {
-                const item = document.createElement('div');
-                item.className = `polling-station-item ${ps.route ? 'assigned' : ''}`;
-                const routeName = ps.route ? routes.find(r => r.id === ps.route)?.name : 'Unassigned';
-                item.innerHTML = `
-                    <div style="flex: 1;">
-                        <strong style="font-size: 12px;">${ps.name}</strong><br>
-                        <span style="font-size: 11px; color: #666;">${ps.village} | ${routeName}</span>
-                    </div>
-                    <button class="danger" style="padding: 3px 6px; font-size: 11px; margin: 0;" onclick="deletePS(${ps.id})">×</button>
-                `;
-                list.appendChild(item);
-            });
-        }
-
-        // Delete Polling Station
-        function deletePS(psId) {
-            if (confirm('Delete this polling station?')) {
-                pollingStations = pollingStations.filter(ps => ps.id !== psId);
-                if (markers[psId]) markers[psId].remove();
-                delete markers[psId];
-                updatePollingStationsList();
-                updatePSSelects();
-                updateAssignmentStats();
-                showMessage('Polling station deleted');
-            }
-        }
-
-        // Update Route Selects
-        function updateRouteSelects() {
-            const selects = document.querySelectorAll('select[id$="Route"]');
-            selects.forEach(select => {
-                select.innerHTML = '<option value="">Select Route</option>';
-                routes.forEach(route => {
-                    select.innerHTML += `<option value="${route.id}">${route.name}</option>`;
-                });
-            });
-        }
-
-        // Update PS Selects
-        function updatePSSelects() {
-            const psSelect = document.getElementById('psSelect');
-            psSelect.innerHTML = '<option value="">Select Polling Station</option>';
-            pollingStations.forEach(ps => {
-                psSelect.innerHTML += `<option value="${ps.id}">${ps.name} (${ps.village})</option>`;
-            });
-        }
-
-        // Assign PS to Route
-        function assignPSToRoute() {
-            const psId = parseInt(document.getElementById('psSelect').value);
-            const route
+       
